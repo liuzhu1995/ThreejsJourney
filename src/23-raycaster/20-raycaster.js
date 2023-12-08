@@ -50,10 +50,7 @@ const testObjects = [sphere01, sphere02, sphere03]
 // // 检测和射线相交的一组物体
 // const intersects = raycaster.intersectObjects(testObjects)
  
- 
 
-
- 
 /**
  * Helper
  */
@@ -179,9 +176,9 @@ let currentInsersect = null
 const tick = () => {
     const elapseTime = clock.getElapsedTime()
 
-    // sphere01.position.y = Math.sin(elapseTime * Math.PI * 0.8)
-    // sphere02.position.y = Math.sin(elapseTime * Math.PI * 0.5)
-    // sphere03.position.y = Math.sin(elapseTime * Math.PI * 0.25)
+    sphere01.position.y = Math.sin(elapseTime * Math.PI * 0.8)
+    sphere02.position.y = Math.sin(elapseTime * Math.PI * 0.5)
+    sphere03.position.y = Math.sin(elapseTime * Math.PI * 0.25)
  
 
     // 通过摄像机和鼠标位置更新射线

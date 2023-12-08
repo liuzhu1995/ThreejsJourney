@@ -1,7 +1,10 @@
 import * as THREE from 'three'
 import gsap from 'gsap'
 
-
+/**
+ * gsap 中文文档
+ * https://gsap.framer.wiki/
+ */
 
 // Scene 
 const scene = new THREE.Scene()

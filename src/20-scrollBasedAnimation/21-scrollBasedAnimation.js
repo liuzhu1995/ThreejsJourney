@@ -11,7 +11,15 @@ const gui = new dat.GUI();
 // const folder = gui.addFolder('菜单')
  
  
+ /**
+ * Sizes
+ */
+const sizes = {
+    width: window.innerWidth,
+    height: window.innerHeight
+}
  
+
 
 /**
  * Base
@@ -24,10 +32,32 @@ const canvas = document.querySelector("canvas.webgl")
 const scene = new THREE.Scene()
 
 /**
+ * Loading
+ */
+const loadingManager = new THREE.LoadingManager()
+loadingManager.onStart = () => {
+    console.log('loadingStart');
+}
+loadingManager.onLoad = () => {
+    console.log('loadingLoad');
+    const loading = document.querySelector('#loading')
+    loading.computedStyleMap.opacity = 0
+    setTimeout(() => {
+        loading.style.display = 'none'
+    }, 300)
+
+}
+loadingManager.onProgress = () => {
+    console.log('loadingProgress');
+}
+loadingManager.onError = () => {
+    console.log('loadingError');
+}
+/**
  * Textures
  */
 
-const textureLoader = new THREE.TextureLoader()
+const textureLoader = new THREE.TextureLoader(loadingManager)
 const gradientTexture = textureLoader.load('/static/textures/gradients/5.jpg')
 gradientTexture.magFilter = THREE.NearestFilter
  
@@ -53,6 +83,38 @@ scene.add(torus, terahedron, trousKnot)
 // torus.position.y = 2
 // terahedron.position.y = 0
 // trousKnot.position.y = -2
+
+/**
+ * Points
+ */
+ 
+const particlesTexture01 = textureLoader.load('/static/textures/particles/1.png')
+const particlesTexture02 = textureLoader.load('/static/textures/particles/2.png')
+const particlesTexture03 = textureLoader.load('/static/textures/particles/3.png')
+const particlesTexture04 = textureLoader.load('/static/textures/particles/4.png')
+const particlesTexture05 = textureLoader.load('/static/textures/particles/5.png')
+const particlesTexture06 = textureLoader.load('/static/textures/particles/6.png')
+const particlesTexture07 = textureLoader.load('/static/textures/particles/7.png')
+const particlesTexture08 = textureLoader.load('/static/textures/particles/8.png')
+const particlesTexture09 = textureLoader.load('/static/textures/particles/9.png')
+const particlesTexture10 = textureLoader.load('/static/textures/particles/10.png')
+const particlesTexture11 = textureLoader.load('/static/textures/particles/11.png')
+const particlesTexture12 = textureLoader.load('/static/textures/particles/12.png')
+const particlesTexture13 = textureLoader.load('/static/textures/particles/13.png')
+const vertices = []
+
+for (let i = 0; i < 200; i++) {
+    const x = THREE.MathUtils.randFloatSpread(10)
+    const y = THREE.MathUtils.randFloat(objectDistance * 3, 2.5)
+    const z = THREE.MathUtils.randFloatSpread(10)
+
+    vertices.push(x, y, z)
+}
+const pointGeometryBuffer = new THREE.BufferGeometry()
+pointGeometryBuffer.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+const pointMaterial = new THREE.PointsMaterial({ size: 0.05, transparent: true, depthWrite: false, alphaMap: particlesTexture06, opacity: 4,})
+const points = new THREE.Points(pointGeometryBuffer, pointMaterial)
+scene.add(points)
 /**
  * Lights
  */
@@ -95,14 +157,6 @@ const directionalLightHelper = new THREE.DirectionalLightHelper(directionalLight
 directionalLightHelper.visible = false
 scene.add(directionalLightHelper)
 
-/**
- * Sizes
- */
-const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
-}
- 
 
 
 /**
@@ -176,7 +230,30 @@ renderer.setSize(sizes.width, sizes.height)
 // 限制最大像素比为2
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.render(scene, camera)
+renderer.setClearColor('#263238')
  
+/**
+ * https://www.showapi.com/book/view/2136/20
+ * 缓动公式：
+ *  1.为运动确定一个小于1且大于0的小数作为比例系数(easing)
+ *  2.确定目标点
+ *  3.计算物体与目标点的距离
+ *  4.计算速度，速度 = 距离 * 比例系数
+ *  5.用当前位置加上速度来计算新的位置
+ *  6.不断重复第3步到第5步，直到物体到达目标点
+ * 缓动的整个过程并不复杂，需要知道距离（物体与目标点（target）之间，变化值）、比例系数（easing，速度除以距离）
+ * vx：x轴速度，vy：y轴速度
+ * dx：x轴距离，dy：y轴距离
+ * dx = targetX - ball.x;
+ * dy = targetY - ball.y;
+ * easing = vx / dx;  =>   vx = dx * easing;
+ * easing = vy / dy;  =>   vy = dy * easing;
+ * ball.x += vx => ball.x += dx * easing; => ball.x += (targetX - ball.x) * easing;
+ * ball.y += vy => ball.y += dy * easing; => ball.y += (targetY - ball.y) * easing;
+ * 最终缓动公式为：
+ * ball.x += (targetX - ball.x) * easing;
+ * ball.y += (targetY - ball.y) * easing;
+ */
 const clock = new THREE.Clock()
 let previousTime = 0
 const objectList = [torus, terahedron, trousKnot]
@@ -184,32 +261,23 @@ const tick = () => {
     // 获取自时钟启动后的秒数，同时将 .oldTime 设置为当前时间
     const elapsedTime = clock.getElapsedTime();
  
+    // deltaTime 为比例系数 easing
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
-
- 
-
-
 
     objectList.forEach(mesh => {
         mesh.rotation.x = elapsedTime * Math.PI * 0.1
         mesh.rotation.y = elapsedTime * Math.PI * 0.12
     })
    
-    
     // 滚动页面设置相机位移
     camera.position.setY(-window.scrollY / sizes.height * 4)
  
     if (pointer.x && pointer.y) {
-        // cameraGroup.position.setX(pointer.x)
-        // cameraGroup.position.setY(pointer.y)
         // 增加缓动效果，实现弹性阻尼物理效果
         // 通过 deltaTime 来进行增量位移。需要特别注意的是不能在同一个 requestAnimationFrame 里同时使用 getElapsedTime 和 getDelta。因为 getElapsedTime 里也调用了 getDelta
-        const dampingFactorX = (pointer.x * 0.5 - cameraGroup.position.x) * 5 * deltaTime
-        const dampingFactorY =(pointer.y * 0.5 - cameraGroup.position.y) * 5 * deltaTime
-        cameraGroup.position.x += dampingFactorX
-        cameraGroup.position.y += dampingFactorY
-        console.log(dampingFactorX, dampingFactorY);
+        cameraGroup.position.x +=  (pointer.x  * 0.5 - cameraGroup.position.x) * deltaTime * 5
+        cameraGroup.position.y +=  (pointer.y * 0.5  - cameraGroup.position.y) * deltaTime * 5
     }
     
 
@@ -221,10 +289,24 @@ const pointer = {
 }
 window.addEventListener('mousemove', (event) => {
      // 将鼠标位置归一化为设备坐标。x 和 y 方向的取值范围是 (-1 to +1)
-     pointer.x = ( event.clientX / sizes.width ) * 2 - 1;
-     pointer.y = - ( event.clientY / sizes.height ) * 2 + 1;
-     console.log(pointer, 'mousemove');
+     pointer.x = (event.clientX / sizes.width) * 2 - 1;
+     pointer.y = -(event.clientY / sizes.height) * 2 + 1;
 })
- 
+let currentSection = 0
+window.addEventListener('scroll', (event) => {
+     // 滚动到区域时触发的动画
+     const newSection = Math.round(window.scrollY / sizes.height)
+     console.log(newSection);
+
+     if (currentSection !== newSection) {
+        currentSection = newSection
+        // // 要生效要注释掉tick()中几何体的自传方法
+        // gsap.to(objectList[currentSection].rotation, {
+        //     duration: 1,
+        //     ease: 'power1.inOut',
+        //     x: '+=6',
+        //     y: '+=3'
+        // })
+     }
+})
 tick()
- 

@@ -11,22 +11,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
  */
 //关联空间数据创建交互界面
 const gui = new dat.GUI();
-// const folder = gui.addFolder('菜单')
  
-const parameters = {
-    color: 0x2c7ad2,
-    spin: () => {
-        gsap.to(mesh.rotation, { duration: 5, y: mesh.rotation.y + Math.PI * 2})
-    },
-  
-}
-
-gui.addColor(parameters, 'color').onChange(() => {
-    material.color.set(parameters.color)
-}).name('材质颜色')
-gui.add(parameters, 'spin')
  
-
 /**
  * Base
  */
@@ -48,6 +34,10 @@ const sizes = {
     height: window.innerHeight
 }
  
+
+
+const cube = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshBasicMaterial())
+scene.add(cube)
 
 
 /**
@@ -140,7 +130,8 @@ window.addEventListener('dblclick', () => {
 const renderer = new THREE.WebGLRenderer({
     canvas: canvas,
     antialias: true,
-    alpha: true,
+ 
+    
 })
 // 将输出canvas的大小调整为(width, height)
 renderer.setSize(sizes.width, sizes.height)
