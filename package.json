@@ -13,6 +13,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cannon-es": "^0.20.0",
+    "cannon-es-debugger": "^1.0.0",
     "dat.gui": "^0.7.9",
     "gsap": "^3.5.1",
     "three": "^0.156.1",

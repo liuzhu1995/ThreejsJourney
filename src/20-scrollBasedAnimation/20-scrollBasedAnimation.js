@@ -264,6 +264,7 @@ const tick = () => {
     // deltaTime 为比例系数 easing
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
+    console.log(elapsedTime, previousTime);
 
     objectList.forEach(mesh => {
         mesh.rotation.x = elapsedTime * Math.PI * 0.1
