@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import CannonDebugger from 'cannon-es-debugger'
 /**
  * ### Physics 物理引擎
+ * http://www.webgl3d.cn/pages/e80014/
  * 物体会产生物理效果，例如中立、弹性、加速度、摩擦力、碰撞等。有很多方式实现物理效果，如果只是简单的物理效果
  * 可以使用数学（三角函数）和 Raycaster 来实现。复杂效果建议使用物理引擎相关的库。
  * TreeJs创建了一个3D世界，通过物理引擎创建一个物理世界，在物理世界中存在着物理体系（牛顿力学、万有引力、胡可弹性定律等）
@@ -56,12 +57,21 @@ const sizes = {
 /**
  * Objects
  */
-const sphere = new THREE.Mesh(new THREE.SphereGeometry(2, 20, 20), new THREE.MeshStandardMaterial())
+const sphereRadius = 1
+const cubeRadius = 1
+const material = new THREE.MeshStandardMaterial()
+
+const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 20, 20)
+const sphere = new THREE.Mesh(sphereGeometry, material)
 sphere.position.y = 2
 sphere.castShadow = true
 scene.add(sphere)
 
-const plane = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial())
+const cubeGeomatery = new THREE.BoxGeometry(cubeRadius, cubeRadius, cubeRadius)
+const cube = new THREE.Mesh(cubeGeomatery, material)
+scene.add(cube) 
+
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(20,20), material)
 plane.rotation.x = -Math.PI * 0.5
 plane.position.y = -5
 plane.receiveShadow = true
@@ -75,6 +85,24 @@ scene.add(plane)
 // 将球体添加到world中
 // 实例化物理world
 const world = new CANNON.World()
+
+/**
+ * 碰撞检测性能优化
+ * 1. 粗测
+ * cannonjs会一直检测物体之间是否有发生碰撞，这非常消耗cpu性能。这一步称为 BroadPhase ，我们可以选择不同的 BroadPhase 来提升性能
+ * .NaiveBroadphase() 默认算法，检测物体碰撞时，一个基础的方式是检测每个物体是否与其他每个物体发生了碰撞
+ * .GridBroadphase() 网格检测，使用四边形栅格覆盖world，仅针对同一栅格或相邻栅格中的其他物体进行碰撞测试
+ * .SAPBroadphase() 扫描-剪枝算法， 在多个步骤的任意轴上测试碰撞
+ * 默认为NaiveBroadphase 建议替换为 SAPBroadphase
+ * 2. 睡眠Sleep
+ * 虽然使用改进的 BroadPhase 算法，但所有物体还是要经过测试，即使那些不再移动的物体。可以使用一个叫 Sleep 的特性，当物体的速度非常慢的时候，
+ * 以至于看不出有在移动，我们称这个物体进入睡眠，不参与碰撞测试，知道有被外力击中或其他物体碰撞到它
+ * 可以通过.Body的 sleepSpeedLimit 和 sleepTimeLimit 属性来设置物体进入睡眠模式的条件
+ *  sleepSpeedLimit: number,如果速度小于此值，则物体被视为进入睡眠状态
+ *  sleepTimeLimit: number, 如果物体在这几秒内一直处于睡眠，则视为睡眠状态
+ */
+world.broadphase = new CANNON.SAPBroadphase(world)
+world.allowSleep = true
 
 // 添加重力,哪个坐标重力大往哪个坐标下坠
 world.gravity.set(0,-9.82, 0)
@@ -96,21 +124,46 @@ const defaultMaterial = new CANNON.Material()
 // 前两个参数材质，第三个参数是一个包含碰撞属性的对象，如摩擦力、反弹力（默认值都是3.0）
 // 和上面使用塑料材质和混凝土材质效果一样
 const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
-    friction: 0.3, 
-    restitution: 0.7,
+    friction: 0.3, // 摩擦力
+    restitution: 0.7, // 弹性，1为回弹到原始位置
+    
 })
 world.addContactMaterial(contactMaterial)
 // Create a sphere
-const radius = 2
+
+const sphereShape =  new CANNON.Sphere(sphereRadius)
+
 // 在cannonjs中通过Body创建物体
 const sphereBody = new CANNON.Body({
-    mass: 1, // kg 质量，两个物体进行碰撞，质量小的更容易被撞开
+    mass: 5, // kg 重力，两个物体进行碰撞，质量小的更容易被撞开
     position: new CANNON.Vec3(0, 2, 0), // m
-    shape: new CANNON.Sphere(radius), // 半径2，与threejs世界中的球体半径相同
+    shape: sphereShape, // 半径2，与threejs世界中的球体半径相同
     // material: concreteMaterial, // 给球体设置混凝土材质
     material: defaultMaterial, // 效果和上面一样
 })
+/**
+ * 施加外力 Applyforces
+ * applyForce(force, worldPoint) 施加作用力，可以用作风吹动树叶，或推倒多米诺骨牌或愤怒的小鸟的受力
+ *      force -- 力的大小（Vec3）
+ *      worldPoint -- 施加力的世界点(Vec3)
+ * applyImpulse 施加冲量。这个冲量是瞬间的，例如射出去的子弹
+ * applyLocalForce 同applyForce，不过是在物体的内部施力，对刚体的局部点施力
+ * applyLocalImpulse 同applyImpulse，不过是在物体的内部施加冲量，对刚体的局部点施加冲量
+ */
+sphereBody.applyForce(new CANNON.Vec3(50, 0, 0), new CANNON.Vec3(0, 0, 0))
 world.addBody(sphereBody)
+
+
+
+const cubeShape = new CANNON.Box(new CANNON.Vec3(cubeRadius/2, cubeRadius/2, cubeRadius/2))
+const cubeBody = new CANNON.Body({
+    mass: 5,
+    position: new CANNON.Vec3(0, 3, 0),
+    shape: cubeShape,
+    material: defaultMaterial,
+})
+
+world.addBody(cubeBody)
 
 // 创建平面plane
 const groundShape = new CANNON.Plane()
@@ -126,15 +179,90 @@ groundBody.addShape(groundShape)
 groundBody.position.set(0, -5, 0)
 groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI * 0.5)
 world.addBody(groundBody)
+
+
 /**
- * Connon Debugger
+ * 事件
+ * 我们可以监听Body上的事件，比如碰撞 collide 、睡眠 slepp、唤醒 wakeup
+ * 可以利用碰撞事件添加音效
+ */
+const objectsToUpdate = []
+const hitSound = new Audio('/static/sounds/hit.mp3')
+const handleCollide = (collision) => {
+    // 获取碰撞强度，较小的碰撞忽略其声音
+    const impactStrength  = collision.contact.getImpactVelocityAlongNormal()
+    // console.log(impactStrength, 'impactStrength');
+    if (impactStrength > 2) {
+        // 当audio已经播放的时候，再次执行play无效，设置 currentTime = 0 从头开始播放
+        hitSound.currentTime = 0
+        hitSound.play()
+    }
+}
+function createSphere(radius, position) {
+    const mesh = new THREE.Mesh(sphereGeometry, new THREE.MeshStandardMaterial({ color: 0xffffff }))
+    mesh.position.y = 2
+    mesh.castShadow = true
+    mesh.scale.set(radius, radius, radius)
+    scene.add(mesh)
+
+    const body = new CANNON.Body({
+        mass: 5,
+        shape: sphereShape,
+        material: defaultMaterial,
+        position,
+    })
+
+    body.addEventListener('collide', handleCollide)
+    
+    world.addBody(body)
+    objectsToUpdate.push({
+        mesh, body
+    })
+}
+ 
+function createCube(width, height, depth, position) {
+      
+    const mesh = new THREE.Mesh(cubeGeomatery, new THREE.MeshStandardMaterial())
+    cube.scale.set(width, height, depth)
+    scene.add(mesh)
+
+    const body = new CANNON.Body({
+        mass: 5,
+        position,
+        shape: cubeShape,
+        material: defaultMaterial,
+    })
+    body.addEventListener('collide', handleCollide)
+ 
+    world.addBody(body)
+    objectsToUpdate.push({
+        mesh, body
+    })
+}
+/**
+ * Connon Debugger 展示模型的物理世界的轮廓
  */
 const cannonMeshes = []
 const guiObj = {
-    CannonDebugger: true,
+    CannonDebugger: false,
     drop() {
+        // 重置小球高度
         sphereBody.position = new CANNON.Vec3(0, 2, 0)
     },
+    addSphere() {
+        createSphere(Math.random(), new CANNON.Vec3(THREE.MathUtils.randFloatSpread(10), 2, THREE.MathUtils.randFloatSpread(10)))
+    },
+    addCube() {
+        createCube(Math.random()*2, Math.random()*2, Math.random()*2,  new CANNON.Vec3(THREE.MathUtils.randFloatSpread(5), 2, THREE.MathUtils.randFloatSpread(5)))
+    },
+    reset () {
+        objectsToUpdate.forEach(item => {
+            const { mesh, body } = item
+            body.removeEventListener('collide', handleCollide)
+            world.removeBody(body)
+            scene.remove(mesh)
+        })
+    }
 }
 const cannonDebugger = new CannonDebugger(scene, world, {
      onInit(body, mesh) {
@@ -149,6 +277,13 @@ gui.add(guiObj, 'CannonDebugger').name('CannonDebuggerMeshVisible').onChange(val
     })
 })
 gui.add(guiObj, 'drop')
+gui.add(guiObj, 'addSphere')
+gui.add(guiObj, 'addCube')
+gui.add(guiObj, 'reset')
+
+
+ 
+
 /**
  * Lights
  */
@@ -157,8 +292,16 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
 scene.add(ambientLight)
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-directionalLight.position.set(0, 5, 3)
+directionalLight.position.set(-5, 5, 0)
 directionalLight.castShadow = true
+directionalLight.shadow.mapSize.width = 1024
+directionalLight.shadow.mapSize.height = 1024
+directionalLight.shadow.camera.near = 0.1
+directionalLight.shadow.camera.far = 20
+directionalLight.shadow.camera.top = 10
+directionalLight.shadow.camera.right = 10
+directionalLight.shadow.camera.bottom = -12
+directionalLight.shadow.camera.left = -10
 scene.add(directionalLight)
 gui.add(directionalLight, 'intensity').min(0).max(10).step(0.001)
 gui.add(directionalLight.position, 'x').min(-10).max(10).step(0.001).name('directionalLightX')
@@ -168,8 +311,9 @@ gui.add(directionalLight.position, 'z').min(-10).max(10).step(0.001).name('direc
  * Camera Helper
  */
 const directionalLightCameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
-// scene.add(directionalLightCameraHelper)
-
+directionalLightCameraHelper.visible = false
+scene.add(directionalLightCameraHelper)
+gui.add(directionalLightCameraHelper, 'visible')
 /**
  * Light Helper
  */
@@ -183,9 +327,9 @@ scene.add(directionalLightHelper)
 // 透视相机
 // 参数2aspect-> 摄像机视锥体长宽比
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.x = 16
-camera.position.y = 5
-camera.position.z = 0
+camera.position.x = 0
+camera.position.y = 20
+camera.position.z = 10
 // 设置相机看向物体的中心位置
 // camera.lookAt(group.position)
 scene.add(camera)
@@ -212,7 +356,7 @@ controls.dampingFactor = 0.03
 controls.enablePan = false
 // 禁用摄像机的缩放
 // controls.enableZoom = false
- 
+gui.add(controls, 'autoRotate')
 
 
 /**
@@ -234,30 +378,6 @@ window.addEventListener('resize', () => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 })
-
-window.addEventListener('dblclick', () => {
-    // 双击设置全屏
-    // 兼容性
-    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
- 
-    if (!fullscreenElement) {
-        // 进入全屏
-        if (canvas.requestFullscreen) {
-            canvas.requestFullscreen()
-        } else if (canvas.webkitRequestFullscreen) {
-            canvas.webkitRequestFullscreen()
-        }
-    } else {
-        // 退出全屏
-        if (document.exitFullscreen) {
-            document.exitFullscreen()
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen()
-        }
-    }
-})
-
- 
 
 /**
  * Renderer
@@ -297,14 +417,28 @@ const clock = new THREE.Clock()
 let oldElapsedTime = 0
 const tick = () => {
     const elapseTime = clock.getElapsedTime()
-    const deltaTime = elapseTime - oldElapsedTime
+   
+    // const deltaTime = elapseTime - oldElapsedTime
 
-    oldElapsedTime = elapseTime
+    // oldElapsedTime = elapseTime
+    // world.step(1 / 60, deltaTime, 3)
+    // 使用cannon-es的fixedStep方法和上面效果一样
     world.fixedStep()
   
-   
-    // 更新threejs世界球体的坐标
+
+    // 更新物理引擎的球体的坐标同步给threejs中的球体
     sphere.position.copy(sphereBody.position)
+    // quaternion
+    cube.position.copy(cubeBody.position)
+    // quaternion 用以表示对象局部旋转。将cannonjs中立方体倒下更新给threejs立方体
+    cube.quaternion.copy(cubeBody.quaternion)
+ 
+    objectsToUpdate.forEach(item => {
+        const { mesh, body } = item
+        mesh.position.copy(body.position)
+        mesh.quaternion.copy(body.quaternion)
+    })
+    
     controls.update()
     cannonDebugger.update()
  

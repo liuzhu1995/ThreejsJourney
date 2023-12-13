@@ -31,6 +31,10 @@ const doorHeightTexture = textureLoader.load('/static/textures/door/height.jpg')
 const doorMetalnessTexture = textureLoader.load('/static/textures/door/metalness.jpg')
 const doorNormalTexture = textureLoader.load('/static/textures/door/normal.jpg')
 const doorRoughnessTexture = textureLoader.load('/static/textures/door/roughness.jpg')
+const grassColor = textureLoader.load('/static/textures/grass/color.jpg')
+const grassAmbientOcclusion = textureLoader.load('/static/textures/grass/ambientOcclusion.jpg')
+const grassNormal = textureLoader.load('/static/textures/grass/normal.jpg')
+const grassRoughness = textureLoader.load('/static/textures/grass/roughness.jpg')
 /**
  * Materials
  */
@@ -107,7 +111,13 @@ scene.add(bushs)
 
  
 
-const plane = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), material)
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({
+     map: grassColor, 
+     normalMap: grassNormal, 
+     roughnessMap: grassRoughness, 
+     aoMap: grassAmbientOcclusion,
+     roughness: 0.7,
+    }))
  
 plane.rotation.x = -Math.PI * 0.5
  

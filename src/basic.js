@@ -3,29 +3,24 @@ import gsap from 'gsap'
 import * as dat from 'dat.gui'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
- 
+/**
+ * 3D 模型的各种格式
+ * 3D模型有各种各样的格式，比如OBJ、FBX、STL、PLY、COLLADA、3DS、GLTF
+ * GLTF已经逐渐变为标准，并且能应付绝大部分的场景
+ * 
+ * GLTF（图形语言传输格式）
+ * GLTF是GL Transmission Format的缩写。由KHronos Group创建（他们还创造了 OpenGL, WebGL, Vulkan, Collada ）
+ * GLTF支持各种数据集，可以在其格式中使用几何体和材质，同时也可以包含相机、光照、场景、动画、骨骼等。同时支持
+ * 各种文件格式，例如json、二进制binary、嵌入纹理（embed texture）等
+ * GLTF已经成为实时渲染的标准，也正在成为大部分3D软件、游戏引擎和库的标准。如果只需要一个几何体，最好使用另一种格式，比如OBJ、FBX、STL或PLY
+ */
 
 /**
  * DeBug
  * dat.gui
  */
-//关联空间数据创建交互界面
 const gui = new dat.GUI();
-// const folder = gui.addFolder('菜单')
- 
-const parameters = {
-    color: 0x2c7ad2,
-    spin: () => {
-        gsap.to(mesh.rotation, { duration: 5, y: mesh.rotation.y + Math.PI * 2})
-    },
-  
-}
 
-gui.addColor(parameters, 'color').onChange(() => {
-    material.color.set(parameters.color)
-}).name('材质颜色')
-gui.add(parameters, 'spin')
- 
 
 /**
  * Base
@@ -48,7 +43,40 @@ const sizes = {
     height: window.innerHeight
 }
  
+/**
+ * Objects
+ */
+ 
 
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial())
+plane.rotation.x = -Math.PI * 0.5
+plane.position.y = -5
+plane.receiveShadow = true
+scene.add(plane)
+
+/**
+ * Lights
+ */
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
+scene.add(ambientLight)
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+directionalLight.position.set(-5, 5, 0)
+directionalLight.castShadow = true
+directionalLight.shadow.mapSize.width = 1024
+directionalLight.shadow.mapSize.height = 1024
+directionalLight.shadow.camera.near = 0.1
+directionalLight.shadow.camera.far = 20
+directionalLight.shadow.camera.top = 10
+directionalLight.shadow.camera.right = 10
+directionalLight.shadow.camera.bottom = -12
+directionalLight.shadow.camera.left = -10
+scene.add(directionalLight)
+gui.add(directionalLight, 'intensity').min(0).max(10).step(0.001)
+gui.add(directionalLight.position, 'x').min(-10).max(10).step(0.001).name('directionalLightX')
+gui.add(directionalLight.position, 'y').min(-10).max(10).step(0.001).name('directionalLightY')
+gui.add(directionalLight.position, 'z').min(-10).max(10).step(0.001).name('directionalLightZ')
 
 /**
  * Camera
@@ -56,13 +84,15 @@ const sizes = {
 // 透视相机
 // 参数2aspect-> 摄像机视锥体长宽比
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.z = 3
+camera.position.x = 4
+camera.position.y = 4
+camera.position.z = 20
 // 设置相机看向物体的中心位置
 // camera.lookAt(group.position)
 scene.add(camera)
-
- 
-
+gui.add(camera.position, 'x').min(-10).max(10)
+gui.add(camera.position, 'y').min(-10).max(10)
+gui.add(camera.position, 'z').min(-10).max(20)
 /**
  * Control 控件
  */
@@ -103,29 +133,6 @@ window.addEventListener('resize', () => {
 
 })
 
-window.addEventListener('dblclick', () => {
-    // 双击设置全屏
-    // 兼容性
-    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
- 
-    if (!fullscreenElement) {
-        // 进入全屏
-        if (canvas.requestFullscreen) {
-            canvas.requestFullscreen()
-        } else if (canvas.webkitRequestFullscreen) {
-            canvas.webkitRequestFullscreen()
-        }
-    } else {
-        // 退出全屏
-        if (document.exitFullscreen) {
-            document.exitFullscreen()
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen()
-        }
-    }
-})
-
- 
 
 /**
  * Renderer
@@ -140,13 +147,13 @@ window.addEventListener('dblclick', () => {
 const renderer = new THREE.WebGLRenderer({
     canvas: canvas,
     antialias: true,
-    alpha: true,
 })
 // 将输出canvas的大小调整为(width, height)
 renderer.setSize(sizes.width, sizes.height)
 // 性能优化在不同屏幕上像素比越大，渲染的次数越多
 // 限制最大像素比为2
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.shadowMap.enabled = true
 renderer.render(scene, camera)
 
 const clock = new THREE.Clock()
@@ -161,4 +168,3 @@ const tick = () => {
 
 
 tick()
- 
