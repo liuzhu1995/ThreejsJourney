@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import * as dat from 'dat.gui'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 /**
  * 3D 模型的各种格式
  * 3D模型有各种各样的格式，比如OBJ、FBX、STL、PLY、COLLADA、3DS、GLTF
@@ -47,11 +48,15 @@ const sizes = {
 /**
  * Objects
  */
- 
+//  const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.5),  new THREE.MeshStandardMaterial() )
+//  sphere.castShadow = true
+//  sphere.position.x = -3
+//  sphere.position.y = 2
+// scene.add(sphere)
 
 const plane = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial())
 plane.rotation.x = -Math.PI * 0.5
-plane.position.y = -5
+// plane.position.y = -5
 plane.receiveShadow = true
 scene.add(plane)
 
@@ -62,7 +67,7 @@ scene.add(plane)
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
 scene.add(ambientLight)
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 3)
 directionalLight.position.set(-5, 5, 0)
 directionalLight.castShadow = true
 directionalLight.shadow.mapSize.width = 1024
@@ -79,6 +84,10 @@ gui.add(directionalLight.position, 'x').min(-10).max(10).step(0.001).name('direc
 gui.add(directionalLight.position, 'y').min(-10).max(10).step(0.001).name('directionalLightY')
 gui.add(directionalLight.position, 'z').min(-10).max(10).step(0.001).name('directionalLightZ')
 
+
+const directionalLightHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
+gui.add(directionalLightHelper, 'visible')
+scene.add(directionalLightHelper)
 /**
  * Models
  * https://blog.csdn.net/weixin_43990650/article/details/121909277
@@ -99,6 +108,16 @@ gui.add(directionalLight.position, 'z').min(-10).max(10).step(0.001).name('direc
  * 
  * glTF-Draco
  *  此格式类似于gltf默认格式，但缓冲区数据（通常是几何体）使用Draco算法进行压缩。和.bin文件大小相比，要小得多
+ *  此格式需要 DracoLoader 来载入这个特殊的压缩模型，three.js 提供了Draco解码器的代码，在 /node_modules/three/example/jsm/libs/目录下找到draco文件夹，
+ *  复制整个文件夹到 static 文件夹下，之后通过 .setDecoderPath() 方法将文件设置给 dracoLoader
+ *  最后使用 setDRACOLoader() 将 DRACOLoader 实例 dracoLoader 设置给 GLTFLoader 实例 gltfLoader
+ * 
+ *  什么时候用Draco压缩？
+ *  使用Draco压缩必须加载DracoLoader类和加载器，其次计算机解码一个压缩文件需要事件和资源，或导致页面打开时有短暂的冻结，即使使用worker和WebAssembly
+ *  如果一个模型只有xxkb，那么不需要draco压缩，如果有xxMB大小并且不在乎页面冻结，可以考虑使用Draco压缩
+ *  bug: THREE.DRACOLoader: Unexpected geometry type. 
+ *       原因一： THREE.DRACOLoader.setDecoderPath('url')中设置的draco解压器之url路径不正确
+ *       原因二： draco解压器路径正确但版本与当前Three.js不匹配
  * 
  * glTF-Embedded
  *  此格式类似于gltf-Binary格式，因为它只有一个文件，此文件实际上是一个json，因此可以再编辑器中打开，这种格式的唯一好处是
@@ -109,23 +128,44 @@ gui.add(directionalLight.position, 'z').min(-10).max(10).step(0.001).name('direc
  * 如果只想一个模型对应一个文件，并且不关心去修改资源内容，那么最好选择 glTF-Binary 二进制格式文件
  * 这两种情况下，还得决定是否要使用Draco压缩
  * 
+ * 有以下几种方式将模型添加到场景：
+ *  1. 将模型的整个 scene 添加到我们的场景里。虽然它的名字是 scene，实际上是一个 Three.Group
+ *  2. 将 scene 下的 children 添加到我们自己的 scene 中，并忽略用不到的 PerspectiveCamera
+ *  3. 过滤 children 的内容，移除掉不需要的对象，如 PerspectiveCamera
+ *  4. 仅添加 Mesh 到场景里，但有可能会有错误的缩放、位置、角度等问题
+ *  5. 打开 3D 软件将 PerspectiveCamera 移除，再重新导出模型
  */
 
+
 const gltfLoader = new GLTFLoader()
+const dracoLoader = new DRACOLoader()
+dracoLoader.setDecoderPath('./static/draco/')
+// dracoLoader.preload()
+gltfLoader.setDRACOLoader(dracoLoader)
+
+// gltfLoader.load(
+//     './static/models/Duck/gltf/Duck.gltf',
+//     (gltf) => {
+//         // 使用第2种方式将模型天机道场景中
+//         console.log(gltf);
+//         // gltf.scene.position.y = -6
+//         // scene.add(gltf.scene.children[0])
+//     },
+//     (xhr) => {
+//         console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+//     },
+//     (err) => {
+//         console.log(err, 'An error happened');
+//     }
+// )
 gltfLoader.load(
-    './static/models/Duck/gltf/Duck.gltf',
+    // './static/models/FlightHelmet/glTF/FlightHelmet.gltf',
+    // './static/models/Fox/glTF/Fox.gltf',
+    './static/models/Duck/glTF-Draco/Duck.gltf',
     (gltf) => {
-        /*  gltf.animations; // Array<THREE.AnimationClip>
-            gltf.scene; // THREE.Group
-            gltf.scenes; // Array<THREE.Group>
-            gltf.cameras; // Array<THREE.Camera>
-            gltf.asset; // Object
-        */
-        console.log(gltf);
-        gltf.scene.position.y = -3
- 
-        scene.add(gltf.scene)
-        // scene.add(gltf.scene.children[0])
+        console.log(gltf, 'gltf');
+        gltf.scene.children[0].children[0].castShadow = true
+        scene.add(gltf.scene.children[0])
     },
     (xhr) => {
         console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
@@ -166,7 +206,7 @@ controls.enableDamping = true
 // 设置阻尼惯性 默认0.05 值越小惯性越大
 controls.dampingFactor = 0.03
 // 禁用摄像机平移
-controls.enablePan = false
+controls.enablePan = true
 // 禁用摄像机的缩放
 // controls.enableZoom = false
  

@@ -291,7 +291,7 @@ gui.add(guiObj, 'reset')
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
 scene.add(ambientLight)
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 3)
 directionalLight.position.set(-5, 5, 0)
 directionalLight.castShadow = true
 directionalLight.shadow.mapSize.width = 1024

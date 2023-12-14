@@ -50,7 +50,6 @@ const sizes = {
 
 const plane = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial())
 plane.rotation.x = -Math.PI * 0.5
-plane.position.y = -5
 plane.receiveShadow = true
 scene.add(plane)
 
