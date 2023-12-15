@@ -97,16 +97,6 @@ scene.add(directionalLightHelper)
  *  https://threejs.org/docs/?q=AnimationMixer#api/zh/animation/AnimationMixer
  *  动画混合器是用于场景中特定对象的动画的播放器。当场景中的多个对象独立动画时，每个对象都可以使用同一个动画混合器
  * 
- * three.js 方法
- *  https://threejs.org/docs/index.html#api/zh/animation/AnimationAction.setEffectiveTimeScale
- *  setEffectiveWeight()
- *  设置权重（weight）以及停止所有淡入淡出
- *  
- *  setEffectiveTimeScale(timeScale: number)
- *  设置时间比例（timeScale）以及停用所有的变形
- * 
- *  crossFadeTo()
- *  在传入的时间段内, 让此动作淡出（fade out），同时让另一个动作淡入
  */
 const gltfLoader = new GLTFLoader()
 let mixer = null
@@ -128,7 +118,7 @@ gltfLoader.load(
         actionSurvey  = mixer.clipAction(gltf.animations[0]);
         actionWalk = mixer.clipAction(gltf.animations[1]);
         actionRun = mixer.clipAction(gltf.animations[2]);
-        actionWalk.setEffectiveWeight(0)
+        actionSurvey.setEffectiveWeight(0)
         actionRun.setEffectiveWeight(0)
         actionSurvey.play()
         actionWalk.play()
@@ -143,22 +133,49 @@ gltfLoader.load(
     },
 )
 
+/**
+ * three.js 方法
+ *  https://threejs.org/docs/index.html#api/zh/animation/AnimationAction.setEffectiveTimeScale
+ *  setEffectiveWeight()
+ *  设置权重（weight）以及停止所有淡入淡出
+ *  
+ *  setEffectiveTimeScale(timeScale: number)
+ *  设置时间比例（timeScale）以及停用所有的变形
+ * 
+ *  .crossFadeTo ( fadeInAction : AnimationAction, durationInSeconds : Number, warpBoolean : Boolean ) : this
+ *  在传入的时间段内, 让此动作淡出（fade out），同时让另一个动作淡入
+ */
+function handleFadeAction  (fadeOutAction, fadeInAction, durationInSeconds = 3) {
+     // enabled 值设为false会禁用动作, 也就是无效.默认值是true
+     fadeInAction.enabled = true
+     // 动作开始的时间点 (单位是秒, 从0开始计时).
+     fadeInAction.time = 0
+     // 设置时间比例因子为1，以及停用所有变形。时间(time)的比例因子. 值为0时会使动画暂停。值为负数时动画会反向执行。默认值是1。
+     fadeInAction.setEffectiveTimeScale(1)
+     // 设置动作权重，以及停止所有淡入淡出。动作的权重 (取值范围[0, 1]). 0 (无影响)到1（完全影响）之间的值可以用来混合多个动作。默认值是1
+     fadeInAction.setEffectiveWeight(1)
+     // 在指定内让 actionSurvey 动作淡出，actionWalk 动作淡入
+     fadeOutAction.crossFadeTo(fadeInAction, durationInSeconds, true)
+}
 const modelsAnimation = {
     surveyToWalk() {
-        // enabled 值设为false会禁用动作, 也就是无效.默认值是true
-        actionWalk.enabled = true
-        // 动作开始的时间点 (单位是秒, 从0开始计时).
-        actionWalk.time = 0
-        // 设置时间比例因子为1，以及停用所有变形。时间(time)的比例因子. 值为0时会使动画暂停。值为负数时动画会反向执行。默认值是1。
-        actionWalk.setEffectiveTimeScale(1)
-        // 设置动作权重，以及停止所有淡入淡出。动作的权重 (取值范围[0, 1]). 0 (无影响)到1（完全影响）之间的值可以用来混合多个动作。默认值是1
-        actionWalk.setEffectiveWeight(1)
-        // 在指定1秒内让 actionSurvey 动作淡出，actionWalk 动作淡入
-        actionSurvey.crossFadeTo(actionWalk, 1, true)
+        handleFadeAction(actionSurvey, actionWalk)
+    },
+    walkToRun() {
+        handleFadeAction(actionWalk, actionRun)
+    },
+    runToSurvery() {
+        handleFadeAction(actionRun, actionSurvey)
+    },
+    runToWalk() {
+        handleFadeAction(actionRun, actionWalk)
     }
 }
 
-gui.add(modelsAnimation, 'surveyToWalk')
+gui.add(modelsAnimation, 'surveyToWalk', )
+gui.add(modelsAnimation, 'walkToRun')
+gui.add(modelsAnimation, 'runToSurvery')
+gui.add(modelsAnimation, 'runToWalk')
 /**
  * Three.js Editor
  *  https://threejs.org/editor/
@@ -256,6 +273,10 @@ const tick = () => {
     if (mixer) {
         // 在每一帧中更新 mixer 
         mixer.update(delta)
+        if (actionSurvey) {
+            // 获取动作权重，从0 ~ 1，代表当前动画所占权重，权重为1的时候100%执行当前动画
+            console.log(actionSurvey.getEffectiveWeight(), 'getEffectiveWeight');
+        }
     }
  
     controls.update()
