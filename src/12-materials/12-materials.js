@@ -64,7 +64,7 @@ const environmentMapTexture = cubeTextureLoader.setPath('/static/textures/enviro
     // '0/ny.jpg',
     // '0/pz.jpg',
     // '0/nz.jpg',
-    
+
     '1/px.jpg',
     '1/nx.jpg',
     '1/py.jpg',
@@ -240,7 +240,7 @@ const torus = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.2, 64, 128), materia
 torus.geometry.setAttribute('uv2', new THREE.BufferAttribute(torus.geometry.attributes.uv.array, 2))
 torus.position.x = 1.5
 scene.add(sphere, plane, torus)
-
+scene.background = environmentMapTexture
  
 /**
  * Lights

@@ -158,14 +158,26 @@ gltfLoader.setDRACOLoader(dracoLoader)
 //         console.log(err, 'An error happened');
 //     }
 // )
-gltfLoader.load(
-    // './static/models/FlightHelmet/glTF/FlightHelmet.gltf',
+const gltfLoader02 = new GLTFLoader()
+// 加载飞行员头盔
+gltfLoader02.load(
+    './static/models/FlightHelmet/glTF/FlightHelmet.gltf',
     // './static/models/Fox/glTF/Fox.gltf',
-    './static/models/Duck/glTF-Draco/Duck.gltf',
+    // './static/models/Duck/glTF-Draco/Duck.gltf',
     (gltf) => {
-        console.log(gltf, 'gltf');
-        gltf.scene.children[0].children[0].castShadow = true
-        scene.add(gltf.scene.children[0])
+ 
+        gltf.scene.scale.set(10,10,10)
+        scene.add(gltf.scene)
+        // gltf.scene.children[0].children[0].castShadow = true
+        /* 飞行员头盔模型由6个mesh组成，gltf.scene.children.length = 6
+          gltf.scene.children[0] ~ children[5]将已加载场景的元素挨个添加到我们的场景中(有bug)
+          bug: 当我们把scene.children数组中的子元素从一个场景移到另一个场景的时候，它会自动从被移除的场景中删除，意味着我们循环的数组长度变小
+          解决：const children = [...gltf.scene.children]
+          for (const child of children) {
+            scene.add(child)
+          }
+        */
+        // scene.add(gltf.scene.children[0])
     },
     (xhr) => {
         console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
@@ -208,7 +220,7 @@ controls.dampingFactor = 0.03
 // 禁用摄像机平移
 controls.enablePan = true
 // 禁用摄像机的缩放
-// controls.enableZoom = false
+controls.enableZoom = false
  
 
 
