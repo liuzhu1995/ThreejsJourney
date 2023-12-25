@@ -3,7 +3,7 @@ import gsap from 'gsap'
 import * as dat from 'dat.gui'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 /**
  * 3D 模型的各种格式
  * 3D模型有各种各样的格式，比如OBJ、FBX、STL、PLY、COLLADA、3DS、GLTF
@@ -55,13 +55,25 @@ plane.receiveShadow = true
 scene.add(plane)
 
 /**
+ * Models
+ */
+const gltfLoader = new GLTFLoader()
+const dracoLoader = new DRACOLoader()
+dracoLoader.setDecoderPath('./static/draco/')
+gltfLoader.setDRACOLoader(dracoLoader)
+
+gltfLoader.load(
+    './static/models/hamburger.glb',
+    (gltf) => {
+        console.log(gltf);
+        scene.add(gltf.scene)
+    },
+)
+/**
  * Lights
  */
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
-scene.add(ambientLight)
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 3)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
 directionalLight.position.set(-5, 5, 0)
 directionalLight.castShadow = true
 directionalLight.shadow.mapSize.width = 1024
@@ -96,20 +108,6 @@ spotLight.shadow.mapSize.height = 1024
 spotLight.shadow.camera.near = 0.1
 spotLight.shadow.camera.far = 3
  
- 
-// spotLight
-// spotLight
-// scene.add(spotLight)
-// gui.add(spotLight, 'intensity').min(0).max(10).name('intensity')
-// gui.add(spotLight.rotation, 'x').min(0).max(10).name('spotLightPX')
-// gui.add(spotLight.rotation, 'y').min(0).max(10).name('spotLightPY')
-// gui.add(spotLight.rotation, 'z').min(0).max(10).name('spotLightPZ')
-// gui.add(spotLight, 'distance').min(0).max(20).step(0.001)
-// gui.add(spotLight, 'penumbra').min(0).max(1).step(0.001)
-// gui.add(spotLight, 'decay').min(0).max(2).step(0.001)
-// const spotLightHelper = new THREE.SpotLightHelper(spotLight)
-// scene.add(spotLightHelper)
-
 /**
  * Camera
  */
@@ -186,7 +184,10 @@ renderer.setSize(sizes.width, sizes.height)
 // 限制最大像素比为2
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.shadowMap.enabled = true
+ 
 renderer.render(scene, camera)
+ 
+gui.add(renderer, 'physicallyCorrectLights')
 
 const clock = new THREE.Clock()
 const tick = () => {

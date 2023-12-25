@@ -143,12 +143,41 @@ dracoLoader.setDecoderPath('./static/draco/')
 // dracoLoader.preload()
 gltfLoader.setDRACOLoader(dracoLoader)
 
-// gltfLoader.load(
-//     './static/models/Duck/gltf/Duck.gltf',
+gltfLoader.load(
+    './static/models/Duck/gltf/Duck.gltf',
+    (gltf) => {
+        // 使用第2种方式将模型天机道场景中
+        console.log(gltf);
+        // gltf.scene.position.y = -6
+        scene.add(gltf.scene.children[0])
+    },
+    (xhr) => {
+        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+    },
+    (err) => {
+        console.log(err, 'An error happened');
+    }
+)
+
+// const gltfLoader02 = new GLTFLoader()
+// // 加载飞行员头盔
+// gltfLoader02.load(
+//     './static/models/FlightHelmet/glTF/FlightHelmet.gltf',
+//     // './static/models/Fox/glTF/Fox.gltf',
+//     // './static/models/Duck/glTF-Draco/Duck.gltf',
 //     (gltf) => {
-//         // 使用第2种方式将模型天机道场景中
-//         console.log(gltf);
-//         // gltf.scene.position.y = -6
+ 
+//         gltf.scene.scale.set(10,10,10)
+//         scene.add(gltf.scene)
+//         // gltf.scene.children[0].children[0].castShadow = true
+//         /* 飞行员头盔模型由6个mesh组成，gltf.scene.children.length = 6
+//           gltf.scene.children[0] ~ children[5]将已加载场景的元素挨个添加到我们的场景中(有bug)
+//           bug: 当我们把scene.children数组中的子元素从一个场景移到另一个场景的时候，它会自动从被移除的场景中删除，意味着我们循环的数组长度变小
+//           解决：const children = [...gltf.scene.children]
+//           for (const child of children) {
+//             scene.add(child)
+//           }
+//         */
 //         // scene.add(gltf.scene.children[0])
 //     },
 //     (xhr) => {
@@ -158,34 +187,6 @@ gltfLoader.setDRACOLoader(dracoLoader)
 //         console.log(err, 'An error happened');
 //     }
 // )
-const gltfLoader02 = new GLTFLoader()
-// 加载飞行员头盔
-gltfLoader02.load(
-    './static/models/FlightHelmet/glTF/FlightHelmet.gltf',
-    // './static/models/Fox/glTF/Fox.gltf',
-    // './static/models/Duck/glTF-Draco/Duck.gltf',
-    (gltf) => {
- 
-        gltf.scene.scale.set(10,10,10)
-        scene.add(gltf.scene)
-        // gltf.scene.children[0].children[0].castShadow = true
-        /* 飞行员头盔模型由6个mesh组成，gltf.scene.children.length = 6
-          gltf.scene.children[0] ~ children[5]将已加载场景的元素挨个添加到我们的场景中(有bug)
-          bug: 当我们把scene.children数组中的子元素从一个场景移到另一个场景的时候，它会自动从被移除的场景中删除，意味着我们循环的数组长度变小
-          解决：const children = [...gltf.scene.children]
-          for (const child of children) {
-            scene.add(child)
-          }
-        */
-        // scene.add(gltf.scene.children[0])
-    },
-    (xhr) => {
-        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
-    },
-    (err) => {
-        console.log(err, 'An error happened');
-    }
-)
 
  
 

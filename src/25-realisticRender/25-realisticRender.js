@@ -6,14 +6,16 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 
 /**
  * 真实渲染
- *  在默认情况下，threejs的光强数值不真实，为了使得光强更趋于真实值，应该把渲染器的 physicallyCorrectLights 属性设为 true
+ *  在默认情况下，threejs的灯光强度是基于任意比例单位的，不能反应真实世界的数值。有的软件使用比例值，有的软件使用物理值。
+ *  为了使得光强更趋于真实值，应该把渲染器的 physicallyCorrectLights 属性设为 true
+ * 例如，如果从Blender导出模型，并在导出的模型中加入灯光，那么blender和threejs中将获得相同的灯光效果
+ * 
  */
 /**
  * DeBug
  * dat.gui
  */
 const gui = new dat.GUI();
-
 
 /**
  * Base
@@ -25,9 +27,6 @@ const canvas = document.querySelector("canvas.webgl")
  */ 
 const scene = new THREE.Scene()
 
-
- 
- 
 /**
  * Sizes
  */
@@ -51,23 +50,26 @@ plane.receiveShadow = true
  * 将贴图环境作为背景并照亮整个模型
  */
 const debugeObj = {
-    envMapIntensity: 3,
+    envMapIntensity: 5,
 }
 const updateAllMaterial = () => {
+    // 更新所有材质，遍历场景的每个子场景，以及每个子场景的子场景，将获得每个对象，无论在场景中有多深
     // 模型是由多个网格Mesh组成，可以使用 traverse 方法来获取场景scene中所有三维物体Object3D类对象
-   
+
     scene.traverse(child => {
+        console.log(child);
+        // 判断是否是网格标准材质的网格
         if (child.type === 'Mesh' && child.material.type === 'MeshStandardMaterial') {
-             // 模型是由多个mesh组成, 获取模型所有mesh，将环境贴图设置给模型的material的envMap属性
-            child.material.envMap = envMaps
-            // 通过乘以环境贴图的颜色来缩放环境贴图的效果，提高亮度
+             // 将环境贴图设置给每个mesh的material的envMap属性，最简单的办法是 scene.environment = environmentMap
+            // child.material.envMap = environmentMap
+            // 通过乘以环境贴图的颜色来缩放环境贴图的效果,给每个材质设置强度
             child.material.envMapIntensity = debugeObj.envMapIntensity
         }
     })
 }
 
 const cubeTextureLoader = new THREE.CubeTextureLoader()
-const envMaps = cubeTextureLoader.setPath('./static/textures/environmentMaps/3/').load(
+const environmentMap = cubeTextureLoader.setPath('./static/textures/environmentMaps/2/').load(
     [
         'px.jpg',
         'nx.jpg',
@@ -77,13 +79,24 @@ const envMaps = cubeTextureLoader.setPath('./static/textures/environmentMaps/3/'
         'nz.jpg',
     ]
 )
-// 将环境贴图应用到所有对象上，就不必给单个 material.envMap 属性设置环境贴图
-// scene.environment = envMaps
+// THREE.SRGBColorSpace 默认
+environmentMap.colorSpace = THREE.SRGBColorSpace 
+ 
+// 将场景环境等同于环境贴图，将环境贴图应用到所有对象上，就不必给单个material.envMap 属性设置环境贴图
+scene.environment = environmentMap
 // 将环境贴图作为scene背景
-scene.background = envMaps
+scene.background = environmentMap
+
+gui.add(environmentMap, 'colorSpace', {
+    'NoColorSpace': THREE.NoColorSpace,
+    'SRGBColorSpace': THREE.SRGBColorSpace,
+    'LinearSRGBColorSpace': THREE.LinearSRGBColorSpace ,
+    'DisplayP3ColorSpace': THREE.DisplayP3ColorSpace,
+    'LinearDisplayP3ColorSpace': THREE.LinearDisplayP3ColorSpace,
+}).onFinishChange(updateAllMaterial)
 
 
-gui.add(debugeObj, 'envMapIntensity').min(0).max(10).step(0.01).onChange(updateAllMaterial)
+gui.add(debugeObj, 'envMapIntensity').min(0).max(20).step(0.01).onChange(updateAllMaterial)
 /**
  * Models
  */
@@ -91,24 +104,11 @@ const gltfLLoader = new GLTFLoader()
 gltfLLoader.load(
     './static/models/FlightHelmet/glTF/FlightHelmet.gltf', 
     (gltf) => {
-        console.log(gltf);
-        // gltf.scene.scale.set(8, 8, 8)
-        const children = [...gltf.scene.children]
- 
-        for (const child of children) {
-            child.scale.set(8, 8, 8)
-            scene.add(child)
-        }
-        // scene.add(gltf.scene)
+        gltf.scene.scale.set(10, 10, 10)
+        scene.add(gltf.scene)
         updateAllMaterial()
+        gui.add(gltf.scene.rotation, 'y').min(-Math.PI * 0.5).max(Math.PI).step(0.001).name('rotation')
         
-    },
-    (process) => {
-        console.log(process);
-        console.log(`loaded: ${process.loaded / process.total * 100}%`);
-    },
-    (err) => {
-        console.log(err, 'An error happened');
     }
 )
 
@@ -116,10 +116,7 @@ gltfLLoader.load(
  * Lights
  */
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
-scene.add(ambientLight)
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 3)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
 directionalLight.position.set(-5, 5, 0)
 directionalLight.castShadow = true
 directionalLight.shadow.mapSize.width = 1024
@@ -130,26 +127,8 @@ directionalLight.shadow.camera.top = 10
 directionalLight.shadow.camera.right = 10
 directionalLight.shadow.camera.bottom = -12
 directionalLight.shadow.camera.left = -10
-// scene.add(directionalLight)
+scene.add(directionalLight)
 
-
-const spotLight = new THREE.SpotLight(0xffffff, 10)
-spotLight.position.y = 10
- 
-// 如果非零，那么光强度将会从最大值当前灯光位置处按照距离线性衰减到0. 默认为0.0
-spotLight.distance = 14
-// 光线散射角度, 最大为Math.PI/2
-spotLight.angle = Math.PI * 0.2
-// 聚光锥的半影衰减百分比。在0和1之间的值。 默认值 0.0
-spotLight.penumbra = 1
-// 沿着光照距离的衰减量 设置为等于2将实现现实世界的光衰减 默认1
-spotLight.decay = 0.3
-
-spotLight.shadow.mapSize.width = 1024
-spotLight.shadow.mapSize.height = 1024
-spotLight.shadow.camera.near = 0.1
-spotLight.shadow.camera.far = 3
- 
 
 /**
  * Camera
@@ -163,8 +142,8 @@ camera.position.z = 20
 // 设置相机看向物体的中心位置
 // camera.lookAt(group.position)
 scene.add(camera)
-gui.add(camera.position, 'x').min(-10).max(10).name('cameraX')
-gui.add(camera.position, 'y').min(-10).max(10).name('cameraY')
+gui.add(camera.position, 'x').min(-20).max(20).name('cameraX')
+gui.add(camera.position, 'y').min(-10).max(20).name('cameraY')
 gui.add(camera.position, 'z').min(-10).max(20).name('cameraZ')
 /**
  * Control 控件
@@ -227,16 +206,44 @@ renderer.setSize(sizes.width, sizes.height)
 // 限制最大像素比为2
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.shadowMap.enabled = true
-// 默认情况下threejs的光照强度数值不真实，为了使光强更趋于真实值，设置physicallyCorrectLights为true
-renderer.physicallyCorrectLights = true
-// typeof NoColorSpace
-// typeof SRGBColorSpace
-// typeof LinearSRGBColorSpace
-// typeof DisplayP3ColorSpace
-// typeof LinearDisplayP3ColorSpace;
-renderer.outputColorSpace = THREE.SRGBColorSpace
-// renderer.outputEncoding = THREE.sRGBEncoding
+// 默认情况下threejs的光照强度数值不真实，为了使光强更趋于真实值，设置physicallyCorrectLights为true。默认开启
+// renderer.physicallyCorrectLights = true
+/**
+ * outputColorSpace 值
+ *   NoColorSpace   
+ *   SRGBColorSpace 
+ *   LinearSRGBColorSpace（默认）
+ *   DisplayP3ColorSpace
+ *   LinearDisplayP3ColorSpace
+ */
+// renderer.outputColorSpace = THREE.SRGBColorSpace
+// renderer.toneMappingExposure = 2.5
+ 
+/**
+ * toneMapping 色调银蛇质在将超高的动态范围HDR转换到我们日常显示的屏幕上的低动态范围LDR的过程
+ */
+renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.render(scene, camera)
+
+gui.add(renderer, 'physicallyCorrectLights')
+gui.add(renderer, 'toneMapping', {
+    No: THREE.NoToneMapping,
+    Liner: THREE.LinearToneMapping,
+    Reinhard: THREE.ReinhardToneMapping,
+    Cineon: THREE.CineonToneMapping,
+    ACESFilmic: THREE.ACESFilmicToneMapping,
+}).onFinishChange(() => {
+    renderer.toneMapping = Number(renderer.toneMapping)
+    updateAllMaterial()
+})
+
+gui.add(renderer, 'outputColorSpace', {
+    no: THREE.NoColorSpace,
+    SRGB: THREE.SRGBColorSpace,
+    linearSRGB: THREE.LinearSRGBColorSpace,
+    dis: THREE.DisplayP3ColorSpace,
+    LinearDis: THREE.LinearDisplayP3ColorSpace,
+})
 
 const clock = new THREE.Clock()
 const tick = () => {
