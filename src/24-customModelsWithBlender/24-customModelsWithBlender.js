@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 /**
+ * https://sketchfab.com/toyblocks/likes 下载模型
  * 3D 模型的各种格式
  * 3D模型有各种各样的格式，比如OBJ、FBX、STL、PLY、COLLADA、3DS、GLTF
  * GLTF已经逐渐变为标准，并且能应付绝大部分的场景
